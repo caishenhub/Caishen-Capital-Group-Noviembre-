@@ -21,7 +21,7 @@ import AssetDistributionDonut from './AssetDistributionDonut';
 import NoticeModal from './NoticeModal';
 import { CorporateNotification } from '../../types';
 import DetailedOperationalReport from '../Portfolio/DetailedOperationalReport';
-import { fetchNotifications, fetchStrategicReport, fetchExecutiveKpis, fetchLiquidityProtocol, fetchTableData, findValue, StrategicReportSection, ExecutiveKpi, LiquidityItem, DATA_UPDATED_EVENT } from '../../lib/googleSheets';
+import { fetchNotifications, fetchStrategicReport, fetchExecutiveKpis, fetchLiquidityProtocol, fetchTableData, findValue, parseSheetNumber, StrategicReportSection, ExecutiveKpi, LiquidityItem, DATA_UPDATED_EVENT } from '../../lib/googleSheets';
 
 interface KpiDetail {
   id: string;
@@ -51,6 +51,7 @@ const ExecutiveSummary: React.FC = () => {
     return saved ? JSON.parse(saved) : [];
   });
   const [masterAum, setMasterAum] = useState<string>('---');
+  const [masterAumRaw, setMasterAumRaw] = useState<number>(0);
   const [showAllNotifications, setShowAllNotifications] = useState(false);
   const [selectedNotification, setSelectedNotification] = useState<CorporateNotification | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -87,7 +88,9 @@ const ExecutiveSummary: React.FC = () => {
       setLiveLiquidity(liquidityData);
 
       const aumRaw = findValue(configData[0], ['AUM_TOTAL_FONDO', 'total_aum', 'aum']);
-      setMasterAum(formatCurrency(aumRaw));
+      const aumNumeric = parseSheetNumber(aumRaw);
+      setMasterAumRaw(aumNumeric);
+      setMasterAum(formatCurrency(aumNumeric > 0 ? aumNumeric : aumRaw));
 
     } catch (e) {
       console.error("Error loading summary data:", e);
@@ -133,6 +136,16 @@ const ExecutiveSummary: React.FC = () => {
     if (showAllNotifications) return liveNotifications;
     return pendingNotifications;
   }, [showAllNotifications, liveNotifications, pendingNotifications]);
+
+  const liquidityPct = useMemo(() => {
+    const immediate = liveLiquidity.find(i => i.name.toLowerCase().includes('liquidez')) || liveLiquidity[0];
+    return immediate && immediate.value > 0 ? immediate.value : 80;
+  }, [liveLiquidity]);
+
+  const protocolLiquidityAmount = useMemo(() => {
+    if (!masterAumRaw) return '---';
+    return formatCurrency(masterAumRaw * (liquidityPct / 100));
+  }, [masterAumRaw, liquidityPct]);
 
   const markAsRead = (id: string) => {
     if (!readNotificationIds.includes(id)) {
@@ -182,7 +195,7 @@ const ExecutiveSummary: React.FC = () => {
         <div className="space-y-4">
           <p className="font-bold text-accent">Política de Liquidez y Solvencia Estructural</p>
           <p>La liquidez de la compañía se organiza bajo un esquema de alta disponibilidad patrimonial.</p>
-          <p>La Reserva Técnica mantiene un nivel de liquidez inmediata del 100%, garantizando capacidad de respuesta ante escenarios de mercado y cumplimiento de compromisos operativos.</p>
+          <p>La Reserva Técnica mantiene un nivel de liquidez inmediata del {liquidityPct}%, garantizando capacidad de respuesta ante escenarios de mercado y cumplimiento de compromisos operativos.</p>
         </div>
       )
     },
@@ -354,7 +367,12 @@ const ExecutiveSummary: React.FC = () => {
 
           <div className="flex-1 flex flex-col justify-center items-center relative z-10 gap-12">
             <div className="w-full max-w-[400px]">
-              <AssetDistributionDonut data={liveLiquidity} centerValue={masterAum} />
+              <AssetDistributionDonut 
+                data={liveLiquidity} 
+                centerValue={protocolLiquidityAmount} 
+                centerLabel={`Protocolo de Liquidez (${liquidityPct}%)`}
+                totalSubtext={masterAum !== '---' ? `Patrimonio Total: ${masterAum}` : undefined}
+              />
             </div>
 
             {/* Distribución Detallada - Estilo Premium */}
@@ -384,11 +402,18 @@ const ExecutiveSummary: React.FC = () => {
                         style={{ width: `${item.value}%`, backgroundColor: item.color }}
                       ></div>
                     </div>
-                    {item.subtext && (
-                      <p className="text-[9px] font-bold text-white/20 uppercase tracking-[0.15em] mt-2 truncate">
-                        {item.subtext}
-                      </p>
-                    )}
+                    <div className="flex items-center justify-between gap-2 mt-2">
+                      {item.subtext && (
+                        <p className="text-[9px] font-bold text-white/30 uppercase tracking-[0.15em] truncate">
+                          {item.subtext}
+                        </p>
+                      )}
+                      {masterAumRaw > 0 && (
+                        <span className="text-[10px] font-black text-white/70 tabular-nums shrink-0">
+                          {formatCurrency(masterAumRaw * (item.value / 100))}
+                        </span>
+                      )}
+                    </div>
                   </div>
 
                   {/* Efecto de hover */}

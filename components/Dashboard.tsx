@@ -137,20 +137,22 @@ const Dashboard: React.FC = () => {
     }
 
     let calculatedProfitUSD = 0;
-    const dataToProcess = selectedPeriod === 'General' 
-      ? [...historyData] 
-      : historyData.filter(h => parseInt(findValue(h, ['ANIO', 'year'])) === selectedPeriod);
+    if (selectedPeriod === 'General') {
+      calculatedProfitUSD = liveAUM * (growthValue / 100);
+    } else {
+      const dataToProcess = historyData.filter(h => parseInt(findValue(h, ['ANIO', 'year'])) === selectedPeriod);
 
-    dataToProcess.forEach(row => {
-      const rowYear = parseInt(findValue(row, ['ANIO', 'year']));
-      const rawMonthlyYield = parseSheetNumber(findValue(row, ['RENDIMIENTO_FONDO', 'rendimiento', 'yield']));
-      const yieldForCalc = (Math.abs(rawMonthlyYield) > 1) ? rawMonthlyYield / 100 : rawMonthlyYield;
+      dataToProcess.forEach(row => {
+        const rowYear = parseInt(findValue(row, ['ANIO', 'year']));
+        const rawMonthlyYield = parseSheetNumber(findValue(row, ['RENDIMIENTO_FONDO', 'rendimiento', 'yield']));
+        const yieldForCalc = (Math.abs(rawMonthlyYield) > 1) ? rawMonthlyYield / 100 : rawMonthlyYield;
 
-      const yearConf = fullConfig.find(c => parseInt(findValue(c, ['ANIO', 'year'])) === rowYear) || activeConfig;
-      const baseAUM = parseSheetNumber(findValue(yearConf, ['AUM_TOTAL_FONDO', 'total_aum']));
-      
-      calculatedProfitUSD += (baseAUM * yieldForCalc);
-    });
+        const yearConf = fullConfig.find(c => parseInt(findValue(c, ['ANIO', 'year'])) === rowYear) || activeConfig;
+        const baseAUM = parseSheetNumber(findValue(yearConf, ['AUM_TOTAL_FONDO', 'total_aum']));
+        
+        calculatedProfitUSD += (baseAUM * yieldForCalc);
+      });
+    }
 
     return {
       aum: liveAUM || 0,
@@ -226,14 +228,14 @@ const Dashboard: React.FC = () => {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
         <StatCard 
           title={selectedPeriod === 'General' ? "CAPITAL BAJO GESTIÓN (AUM)" : `AUM CIERRE ${selectedPeriod}`} 
-          value={metrics.aum ? `$${metrics.aum.toLocaleString('en-US', { minimumFractionDigits: 2 })}` : '---'} 
+          value={metrics.aum ? `$${metrics.aum.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '---'} 
           change={metrics.growth >= 0 ? `+${metrics.growth.toFixed(2)}%` : `${metrics.growth.toFixed(2)}%`} 
           changeLabel={selectedPeriod === 'General' ? "Rendimiento Institucional" : `Crecimiento Anual ${selectedPeriod}`} 
           icon={Wallet} variant="light" isNegative={metrics.growth < 0}
         />
         <StatCard 
           title={selectedPeriod === 'General' ? "RENDIMIENTO NETO INSTITUCIONAL" : `BENEFICIO NETO ${selectedPeriod}`} 
-          value={metrics.profit ? `$${metrics.profit.toLocaleString('en-US', { minimumFractionDigits: 2 })}` : '---'} 
+          value={metrics.profit ? `$${metrics.profit.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '---'} 
           change={selectedPeriod === 'General' ? "Histórica" : `${selectedPeriod}`} 
           changeLabel={selectedPeriod === 'General' ? "Beneficio neto consolidado" : `Generado en el periodo`} 
           icon={PiggyBank} variant="light" isNegative={metrics.profit < 0}

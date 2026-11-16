@@ -6,9 +6,16 @@ import { LiquidityItem } from '../../lib/googleSheets';
 interface AssetDistributionDonutProps {
   data: LiquidityItem[];
   centerValue: string;
+  centerLabel?: string;
+  totalSubtext?: string;
 }
 
-const AssetDistributionDonut: React.FC<AssetDistributionDonutProps> = ({ data, centerValue }) => {
+const AssetDistributionDonut: React.FC<AssetDistributionDonutProps> = ({
+  data,
+  centerValue,
+  centerLabel = '80% del Patrimonio Total',
+  totalSubtext
+}) => {
   // Fallback si no hay datos
   const displayData = data.length > 0 ? data : [
     { name: 'Sincronizando...', value: 100, color: '#32314d', subtext: '' }
@@ -75,13 +82,18 @@ const AssetDistributionDonut: React.FC<AssetDistributionDonutProps> = ({ data, c
       </ResponsiveContainer>
       
       {/* TEXTO CENTRAL - AJUSTADO AL NUEVO TAMAÑO */}
-      <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+      <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none px-8 text-center">
         <div className="flex flex-col items-center animate-in fade-in zoom-in duration-1000">
-          <span className="text-white/30 text-[11px] font-black uppercase tracking-[0.4em] mb-3">Patrimonio Total</span>
-          <span className="text-white text-4xl md:text-5xl font-black tracking-tighter leading-none drop-shadow-2xl">
+          <span className="text-white/40 text-[10px] font-black uppercase tracking-[0.25em] mb-2">{centerLabel}</span>
+          <span className="text-white text-2xl sm:text-3xl md:text-4xl font-black tracking-tighter leading-none drop-shadow-2xl">
             {centerValue}
           </span>
-          <div className="h-1.5 w-16 bg-primary rounded-full mt-5 shadow-neon animate-pulse"></div>
+          {totalSubtext && (
+            <span className="text-white/30 text-[9px] font-bold uppercase tracking-widest mt-2">
+              {totalSubtext}
+            </span>
+          )}
+          <div className="h-1.5 w-16 bg-primary rounded-full mt-4 shadow-neon animate-pulse"></div>
         </div>
       </div>
     </div>
